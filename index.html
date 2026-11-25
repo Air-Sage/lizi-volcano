@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>栗子与萤 · 火山星</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #1a0d0b; overflow: hidden; font: 15px/1.5 "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif; color: #fff1dc; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none; cursor: grab; }
+  #c:active { cursor: grabbing; }
+  .panel { background: rgba(38, 16, 12, .58); border: 1px solid rgba(255, 200, 150, .22); border-radius: 12px; backdrop-filter: blur(6px); }
+  #top { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); top: calc(14px + env(safe-area-inset-top, 0px)); padding: 9px 14px; display: flex; gap: 14px; align-items: center; }
+  #top b { font-weight: 600; letter-spacing: .04em; }
+  #top .gem { display: inline-block; width: 11px; height: 15px; background: #ffb050; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); margin-right: 7px; vertical-align: -2px; box-shadow: 0 0 10px #ff9a3c; }
+  #count { font-variant-numeric: tabular-nums; }
+  #energy { position: fixed; left: 50%; bottom: calc(62px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: min(300px, 60vw); padding: 7px 10px 9px; font-size: 12px; text-align: center; }
+  #energy i { display: block; height: 7px; margin-top: 5px; border-radius: 4px; background: rgba(255, 255, 255, .14); overflow: hidden; }
+  #bar { display: block; height: 100%; width: 100%; background: #d6ff4a; border-radius: 4px; }
+  #bar.low { background: #ff7a3a; }
+  #hint { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); padding: 7px 14px; font-size: 13px; white-space: nowrap; color: #ffe2c2; max-width: 94vw; overflow: hidden; text-overflow: ellipsis; }
+  kbd { font: inherit; font-size: 12px; padding: 1px 6px; border-radius: 5px; background: rgba(255, 220, 180, .16); border: 1px solid rgba(255, 220, 180, .28); margin: 0 2px; }
+  #toast { position: fixed; left: 50%; top: calc(72px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -8px); padding: 9px 18px; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; }
+  #toast.on { opacity: 1; transform: translate(-50%, 0); }
+  #ring { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(20, 8, 6, .28); }
+  #ring.on { display: flex; }
+  #ring .wheel { position: relative; width: 300px; height: 300px; }
+  #ring button { position: absolute; width: 104px; height: 104px; margin: -52px; border-radius: 50%; border: 1px solid rgba(190, 255, 230, .5); background: rgba(22, 60, 56, .78); color: #dffff2; font: inherit; cursor: pointer; }
+  #ring button:hover, #ring button.on { background: rgba(40, 120, 104, .9); }
+  #ring button small { display: block; opacity: .7; font-size: 11px; }
+  #ring .hub { position: absolute; left: 50%; top: 50%; width: 70px; height: 70px; margin: -35px; border-radius: 50%; background: radial-gradient(circle, #58f0c8 0 22%, #0e1116 24% 62%, #58f0c8 64% 72%, transparent 74%); }
+  #start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(24, 9, 7, .5); transition: opacity .5s; }
+  #start.off { opacity: 0; pointer-events: none; }
+  #start .card { padding: 26px 32px 24px; max-width: min(520px, 88vw); }
+  #start h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: .06em; }
+  #start p { margin: 6px 0; color: #ffdcb8; }
+  #start ul { margin: 12px 0 18px; padding-left: 18px; color: #ffe9d2; }
+  #start li { margin: 4px 0; }
+  #go { font: inherit; font-size: 16px; padding: 9px 28px; border-radius: 999px; border: 0; background: #ffb050; color: #3a1608; cursor: pointer; font-weight: 600; }
+  #go:disabled { opacity: .5; cursor: default; }
+  #done { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(14px + env(safe-area-inset-top, 0px)); padding: 9px 14px; display: none; }
+  #done.on { display: block; }
+  [hidden] { display: none !important; }
+</style>
+<script type="importmap">{"imports":{"three":"./lib/three.module.min.js","three/addons/":"./lib/jsm/"}}</script>
+</head>
+<body>
+<canvas id="c" tabindex="0"></canvas>
+<div id="top" class="panel"><b>栗子与萤 · 火山星</b><span><span class="gem"></span>余烬晶 <span id="count">0 / 10</span></span></div>
+<div id="done" class="panel">信标已点亮 · 可以继续四处走走</div>
+<div id="toast" class="panel"></div>
+<div id="energy" class="panel" hidden>叶舟能量（在熔岩上方会消耗，回到陆地充能）<i><span id="bar"></span></i></div>
+<div id="hint" class="panel"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>移动 <kbd>Shift</kbd>加速 <kbd>空格</kbd>跳 · <kbd>E</kbd>叶舟 <kbd>Q</kbd>功能环 <kbd>F</kbd>探照灯 <kbd>C</kbd>扫描 · 拖动或<kbd>←</kbd><kbd>→</kbd>转视角</div>
+<div id="ring"><div class="wheel"><div class="hub"></div>
+  <button id="rideBtn" style="left:50%;top:14%">变成叶舟<small>E</small></button>
+  <button id="lampBtn" style="left:17%;top:72%">探照灯<small>F</small></button>
+  <button id="scanBtn" style="left:83%;top:72%">扫描<small>C</small></button>
+</div></div>
+<div id="start"><div class="card panel">
+  <h1>栗子与萤 · 火山星</h1>
+  <p>小机器人栗子和伙伴萤降落在一颗火山星上。找齐 10 颗余烬晶，点亮台地上的信标。</p>
+  <ul>
+    <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动，<kbd>Shift</kbd> 加速，<kbd>空格</kbd> 跳</li>
+    <li>按住鼠标拖动或 <kbd>←</kbd><kbd>→</kbd> 转视角，滚轮缩放</li>
+    <li><kbd>E</kbd> 让萤变成叶舟：可以飞越熔岩，但在熔岩上方会耗能量</li>
+    <li><kbd>Q</kbd> 打开萤的功能环，<kbd>F</kbd> 探照灯，<kbd>C</kbd> 扫描余烬晶</li>
+    <li>步行碰到熔岩会回到上一个安全点</li>
+  </ul>
+  <button id="go" disabled>出发</button> <span id="loading">正在加载模型…</span>
+</div></div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
